@@ -4,6 +4,9 @@
 # compiled
 *.pyc
 
+# vscode
+.vscode
+
 # IntelliJ
 .idea
 *.iml
