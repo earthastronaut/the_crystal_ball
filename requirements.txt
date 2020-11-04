@@ -25,3 +25,6 @@ click
 
 # For code format checking
 black
+
+# Dylan's general data science tools
+git+https://github.com/earthastronaut/data_science_tools.git@master#egg=data_science_tools
