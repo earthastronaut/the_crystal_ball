@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+    dev:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: dev
+        image: the_crystal_ball-dev-image
+        container_name: the_crystal_ball-dev-container
+        command: jupyter lab --NotebookApp.token=''
+        volumes:
+            - ./:/work
+        ports:
+            - 8883:8888 # host:container
+    release:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: release
+        image: the_crystal_ball-release-image
+        container_name: the_crystal_ball-release-container
+        volumes:
+            - ./:/usr/local/src/app
