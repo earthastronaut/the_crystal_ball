@@ -1,0 +1,6 @@
+FROM the_crystal_ball-image-base
+
+COPY . /work
+WORKDIR /work
+
+ENTRYPOINT ["/bin/bash"]
