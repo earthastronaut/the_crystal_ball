@@ -1,3 +1,27 @@
+# For data manipulation
+pandas
+numpy
+
+# For data visualization
+matplotlib
+seaborn
+
+# For download google trends data
+pytrends
+
+# For machine learning
+xgboost
+convertdate
+fbprophet
+sklearn
+scipy
+pygam
+
+# For accessing AWS S3
 awscli
+
+# For interactive CLI scripts
 click
+
+# For code format checking
 black

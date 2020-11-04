@@ -1,5 +1,13 @@
+# For data visualization
 matplotlib
+
+# For interactivity
 jupyter
+jupyterlab
 notebook
+
+# For documentation generation
 Sphinx
+
+# For code checking
 flake8
