@@ -1,6 +1,6 @@
 # the_crystal_ball
 
-Please Input a short description
+Timeseries forecast for SLC Python talk
 
 ## Requirements
 
@@ -10,14 +10,14 @@ Please Input a short description
 
 We setup the development environment in a Docker container with the following command.
 
-- `make init`
+- `make build`
 
 This command gets the resources for training and testing, and then prepares the Docker image for the experiments.
 After creating the Docker image, you run the following command.
 
-- `make create-container`
+- `make docker-container`
 
-The above command creates a Docker container from the Docker image which we create with `make init`, and then
+The above command creates a Docker container from the Docker image which we create with `make build`, and then
 login to the Docker container. Now we made the development environment. For create and evaluate the model,
 you run the following command.
 
@@ -37,12 +37,12 @@ such as Vim, Emacs, Atom or PyCharm. The changes in host environment are reflect
 When we need to add libraries in `Dockerfile` or `requirements.txt`
 which are added to working environment in the Docker container, we need to drop the current Docker container and
 image, and then create them again with the latest setting. To remove the Docker the container and image, run `make clean-docker`
-and then `make init-docker` command to create the Docker container with the latest setting.
+and then `make docker-build` command to create the Docker container with the latest setting.
 
 ### Login Docker container
 
-Only the first time you need to create a Docker container, from the image created in `make init` command.
-`make create-container` creates and launch the the_crystal_ball container.
+Only the first time you need to create a Docker container, from the image created in `make build` command.
+`make docker-container` creates and launch the the_crystal_ball container.
 After creating the container, you just need run `make start-container`.
 
 ### Logout from Docker container
@@ -72,9 +72,10 @@ When you see the status of Docker container, please run `make profile` in host m
 ### Use Jupyter Notebook
 
 To launch Jupyter Notebook, please run `make jupyter` in the Docker container. After launch the Jupyter Notebook, you can
-access the Jupyter Notebook service in http://localhost:8883.
+access the Jupyter Notebook service in http://localhost:8888.
 
 ### Run formatter
+
 When you format project's codes, please run `make format`.
 More details of black inhttps://github.com/psf/black
 

@@ -1,5 +1,17 @@
-.PHONY: clean clean-model clean-pyc docs help init init-docker create-container start-container jupyter test lint profile clean clean-data clean-docker clean-container clean-image sync-from-source sync-to-source
-.DEFAULT_GOAL := help
+###########################################################################################################
+## VARIABLES
+###########################################################################################################
+
+DOCKER:=docker
+TARGET:=dev
+PWD:=`pwd`
+PROJECT_NAME:=the_crystal_ball
+DOCKERFILE:=Dockerfile
+IMAGE_NAME:=$(PROJECT_NAME)-$(TARGET)-image
+CONTAINER_NAME:=$(PROJECT_NAME)-$(TARGET)-container
+DATA_SOURCE:='Please Input data source'
+JUPYTER_HOST_PORT:=8883
+PYTHON:=python3
 
 ###########################################################################################################
 ## SCRIPTS
@@ -8,7 +20,7 @@
 define PRINT_HELP_PYSCRIPT
 import os, re, sys
 
-if os.environ['TARGET']:
+if os.environ.get('TARGET'):
     target = os.environ['TARGET']
     is_in_target = False
     for line in sys.stdin:
@@ -34,33 +46,14 @@ else:
             target, help = match.groups()
             print("%-20s %s" % (target, help))
 endef
+export PRINT_HELP_PYSCRIPT
 
 define START_DOCKER_CONTAINER
 if [ `$(DOCKER) inspect -f {{.State.Running}} $(CONTAINER_NAME)` = "false" ] ; then
         $(DOCKER) start $(CONTAINER_NAME)
 fi
 endef
-
-###########################################################################################################
-## VARIABLES
-###########################################################################################################
-export DOCKER=docker
-export TARGET=
-export PWD=`pwd`
-export PRINT_HELP_PYSCRIPT
 export START_DOCKER_CONTAINER
-export PYTHONPATH=$PYTHONPATH:$(PWD)
-export PROJECT_NAME=the_crystal_ball
-export MODE=dev
-export BASE_DOCKERFILE=docker/Dockerfile
-export DOCKERFILE=$(BASE_DOCKERFILE).$(MODE)
-export BASE_IMAGE_NAME=$(PROJECT_NAME)-image-base
-export IMAGE_NAME=$(PROJECT_NAME)-$(MODE)-image
-export CONTAINER_NAME=$(PROJECT_NAME)-$(MODE)-container
-export DATA_SOURCE=Please Input data source
-export JUPYTER_HOST_PORT=8883
-export JUPYTER_CONTAINER_PORT=8888
-export PYTHON=python3
 
 ###########################################################################################################
 ## ADD TARGETS SPECIFIC TO "the_crystal_ball"
@@ -74,32 +67,42 @@ export PYTHON=python3
 help: ## show this message
 	@$(PYTHON) -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-init: init-docker sync-from-source ## initialize repository for traning
+build: docker-build sync-from-source ## initialize repository for traning
 
 sync-from-source: ## download data data source to local envrionment
 	-aws s3 sync $(DATA_SOURCE) ./data/
 
-init-docker: ## initialize docker image
-	$(DOCKER) build -t $(BASE_IMAGE_NAME) -f $(BASE_DOCKERFILE) --build-arg UID=$(shell id -u) .
-	$(DOCKER) build -t $(IMAGE_NAME) -f $(DOCKERFILE) .
+docker-build: ## initialize docker image
+	$(DOCKER) build \
+		--tag $(IMAGE_NAME) \
+		--target $(TARGET) \
+		--file $(DOCKERFILE) \
+		.
 
-init-docker-no-cache: ## initialize docker image without cache
-	$(DOCKER) build --no-cache -t $(BASE_IMAGE_NAME) -f $(BASE_DOCKERFILE) --build-arg UID=$(shell id -u) .
-	$(DOCKER) build --no-cache -t $(IMAGE_NAME) -f $(DOCKERFILE) .
+docker-build-no-cache: ## initialize docker image without cache
+	$(DOCKER) build \
+		--no-cache \
+		--tag $(IMAGE_NAME) \
+		--target $(TARGET) \
+		--file $(DOCKERFILE) \
+		.
 
 sync-to-source: ## sync local data to data source
 	-aws s3 sync ./data/ $(DATA_SOURCE)
 
-create-container: ## create docker container
-	$(DOCKER) run -it -v $(PWD):/work -p $(JUPYTER_HOST_PORT):$(JUPYTER_CONTAINER_PORT) --name $(CONTAINER_NAME) $(IMAGE_NAME)
+docker-container: ## create docker container
+	$(DOCKER) run -it \
+		--volume $(PWD):/work \
+		--publish $(JUPYTER_HOST_PORT):8888 \
+		--name $(CONTAINER_NAME) \
+		$(IMAGE_NAME)
 
-start-container: ## start docker container
+docker-start: ## start docker container
 	@echo "$$START_DOCKER_CONTAINER" | $(SHELL)
 	@echo "Launched $(CONTAINER_NAME)..."
 	$(DOCKER) attach $(CONTAINER_NAME)
 
-jupyter: ## start Jupyter Notebook server
-	jupyter-notebook --ip=0.0.0.0 --port=${JUPYTER_CONTAINER_PORT}
+jupyter: docker-start ## Run docker container with jupyter ports exposed
 
 test: ## run test cases in tests directory
 	$(PYTHON) -m unittest discover
@@ -109,7 +112,7 @@ lint: ## check style with flake8
 
 profile: ## show profile of the project
 	@echo "CONTAINER_NAME: $(CONTAINER_NAME)"
-	@echo "IMAGE_NAME: $(IMAGE_NAME)"
+	@echo "IMAGE_NAME: $(IMAGE_NAME)"`
 	@echo "JUPYTER_PORT: `$(DOCKER) port $(CONTAINER_NAME)`"
 	@echo "DATA_SOURE: $(DATA_SOURCE)"
 
@@ -140,3 +143,10 @@ clean-image: ## remove Docker image
 format:
 	- black scripts
 	- black $(PROJECT_NAME)
+
+###########################################################################################################
+## HELP
+###########################################################################################################
+
+.PHONY: help
+.DEFAULT_GOAL := help
