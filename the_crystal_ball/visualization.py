@@ -115,7 +115,7 @@ def plot_evaluation_prediction(
     ax = ax or plt.gca()
     plot_kws = plot_kws or {}
 
-    plot_evaluation_fbprophet(predict_train, label="Predict", ax=ax, **plot_kws)
+    plot_evaluation_fbprophet(predict_train, label="Predict", ax=ax, **plot_kws)  # noqa
     plot_evaluation_fbprophet(predict_test, ax=ax, **plot_kws)
     plot_features(
         train_df,
@@ -133,7 +133,9 @@ def plot_evaluation_prediction(
     )
 
 
-def plot_evaluation_fbprophet_forecast_residual(input_df, predict_df, ax=None, **kws):
+def plot_evaluation_fbprophet_forecast_residual(
+    input_df, predict_df, ax=None, **kws
+):  # noqa
     ax = ax or plt.gca()
 
     input_y = input_df["y"].values
@@ -177,7 +179,12 @@ def plot_evaluation_prediction_residual(
         **plot_kws,
     )
     plot_evaluation_fbprophet_forecast_residual(
-        test_df, predict_test, label="Predict Test", color=COLOR_TEST, ax=ax, **plot_kws
+        test_df,
+        predict_test,
+        label="Predict Test",
+        color=COLOR_TEST,
+        ax=ax,
+        **plot_kws,  # noqa
     )
     if add_legend:
         plt.legend()
