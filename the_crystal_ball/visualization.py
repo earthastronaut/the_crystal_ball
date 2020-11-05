@@ -26,7 +26,7 @@ def plot_articles(df_input, ax=None, colors=None, add_legend=True):
     for article in articles:
         views = df_input.loc[df_input["article"] == article]["views"]
 
-        views = views / views.sum()
+        # views = views / views.sum()
         views = views.rolling(10).mean()
         # views = views.cumsum()
         color = next(colors)
@@ -37,6 +37,9 @@ def plot_articles(df_input, ax=None, colors=None, add_legend=True):
             color=color,
             lw=2,
         )
+
+        ax.axhline(views.mean(), label=article, color=color)
+
     if add_legend:
         plt.legend()
     ax.set_ylabel("Daily Page Views")
