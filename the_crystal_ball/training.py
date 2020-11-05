@@ -3,6 +3,7 @@
 # standard
 # external
 import pandas as pd
+import sklearn.metrics
 
 # internal
 
@@ -92,14 +93,22 @@ def train_model(model, df_features, window):
         model.fit(train_df)
 
     print("predictions from model")
+    predict_test = model.predict(test_df)
+
     return {
         "model_name": model.model_name,
         "model": model,
         "train_df": train_df,
         "test_df": test_df,
         "predict_train": model.predict(train_df),
-        "predict_test": model.predict(test_df),
+        "predict_test": predict_test,
         "window": window,
+        "metrics": {
+            "mean_absolute_error": sklearn.metrics.mean_absolute_error(
+                test_df["y"].values,
+                predict_test["yhat"].values,
+            ),
+        },
     }
 
 
