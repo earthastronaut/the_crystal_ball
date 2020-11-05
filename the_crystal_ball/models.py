@@ -8,7 +8,7 @@ import pickle
 import fbprophet
 
 # internal
-from .configation import config
+from .configuration import config
 
 
 def create_model(model_name, **hyperparameters):
