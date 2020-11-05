@@ -11,6 +11,10 @@ import pandas as pd
 import requests
 
 
+class ValidationError(Exception):
+    """ Error when validating data """
+
+
 def get_wikipedia_daily_page_views(article, start=None, stop=None):
     """Reads daily page_views from wikipedia for an article.
 
@@ -83,3 +87,28 @@ def get_wikipedia_articles(articles, start=None, stop=None):
         dataframes.append(get_wikipedia_daily_page_views(article, start, stop))
 
     return pd.concat(dataframes)
+
+
+def validate_input_data(df_input):
+    input_columns = set(df_input.columns)
+    required_columns = {
+        "project",
+        "article",
+        "granularity",
+        "timestamp",
+        "access",
+        "agent",
+        "views",
+    }
+    missing_columns = input_columns - required_columns
+    if len(missing_columns) > 0:
+        raise ValidationError(
+            f"Missing columns from input data: {missing_columns} "
+            f"from {input_columns}"
+        )
+
+    negative_views = (df_input["views"] < 0).sum()
+    if negative_views > 0:
+        raise ValidationError(f"Found negative view values {negative_views}")
+
+    print("Data Passes Validation")
