@@ -22,7 +22,7 @@ def create_model(model_name, **hyperparameters):
 
 def save_model(model, filename):
     filepath = os.path.join(
-        config.root_path,
+        config.ROOT_PATH,
         "model",
         filename,
     )
@@ -33,7 +33,7 @@ def save_model(model, filename):
 
 def load_model(filename):
     filepath = os.path.join(
-        config.root_path,
+        config.ROOT_PATH,
         "model",
         filename,
     )

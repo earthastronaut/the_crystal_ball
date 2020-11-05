@@ -7,10 +7,35 @@ import seaborn as sns
 # internal
 from .training import test_train_split
 
+# Default parameters for matplotlib
+plt.rcParams["figure.figsize"] = (11, 11)
 
 COLOR_TRAIN = sns.crayons["Denim"]
 COLOR_TEST = sns.crayons["Orange"]
 COLOR_PREDICT = sns.crayons["Royal Purple"]
+
+
+def plot_articles(df_input, ax=None, add_legend=True):
+    ax = ax or plt.gca()
+
+    articles = df_input["article"].unique()
+    for article in articles:
+        print(article)
+        views = df_input.loc[df_input["article"] == article]["views"]
+
+        views = views / views.sum()
+        views = views.rolling(10).mean()
+        # views = views.cumsum()
+
+        plt.plot(
+            views.index,
+            views.values,
+            label=article,
+        )
+    if add_legend:
+        plt.legend()
+    ax.set_ylabel("Daily Page Views")
+    ax.set_xlabel("")
 
 
 def plot_features(df_features, ax=None, **kws):
