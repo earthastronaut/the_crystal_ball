@@ -50,7 +50,6 @@ def get_wikipedia_daily_page_views(article, start=None, stop=None):
             params["stop"] = pd.Timestamp(stop).strftime("%Y%m%d")
 
     url_with_params = url.format(**params)
-    print(f"Downloading: {url_with_params}")
     response = requests.get(url_with_params)
     data = response.json()
     try:

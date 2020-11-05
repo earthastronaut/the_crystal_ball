@@ -15,22 +15,27 @@ COLOR_TEST = sns.crayons["Orange"]
 COLOR_PREDICT = sns.crayons["Royal Purple"]
 
 
-def plot_articles(df_input, ax=None, add_legend=True):
+def plot_articles(df_input, ax=None, colors=None, add_legend=True):
     ax = ax or plt.gca()
 
     articles = df_input["article"].unique()
+    if colors is None:
+        colors = sns.color_palette("rainbow", len(articles))
+
+    colors = iter(colors)
     for article in articles:
-        print(article)
         views = df_input.loc[df_input["article"] == article]["views"]
 
         views = views / views.sum()
         views = views.rolling(10).mean()
         # views = views.cumsum()
-
+        color = next(colors)
         plt.plot(
             views.index,
             views.values,
             label=article,
+            color=color,
+            lw=2,
         )
     if add_legend:
         plt.legend()
