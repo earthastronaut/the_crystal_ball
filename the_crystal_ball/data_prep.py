@@ -17,13 +17,14 @@ def create_features(df_input, **meta):
     df_filtered = df_input.loc[df_input["article"] == input_article]
 
     df_features["ds"] = df_filtered["timestamp"]
-    df_features["y"] = df_filtered["views"]
+    # df_features["y"] = df_filtered["views"]
     #     Scaling
     #     Resampling and Interpolation
     #     Power Transforms to remove noise (e.g. square root or log transform)
     #     Moving Average Smoothing
+    df_features["y"] = df_filtered["views"].rolling(7).mean()
 
-    return df_features
+    return df_features.dropna()
 
 
 def store_features(df_features):
