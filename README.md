@@ -4,7 +4,7 @@ Timeseries forecast for SLC Python talk
 
 ## Requirements
 
-* [Docker version 17 or later](https://docs.docker.com/install/#support)
+- [Docker version 17 or later](https://docs.docker.com/install/#support)
 
 ## Setup development environment
 
@@ -28,7 +28,7 @@ This section shows how we develop with the created Docker container.
 ### Edit source code
 
 Most of the source codes of this project, `the_crystal_ball` are stored in the `the_crystal_ball` directory.
-Generated Docker container mounts the project directory to ``/work`` of the container and therefore
+Generated Docker container mounts the project directory to `/work` of the container and therefore
 when you can edit the files in the host environment with your favorite editor
 such as Vim, Emacs, Atom or PyCharm. The changes in host environment are reflected in the Docker container environment.
 
@@ -78,7 +78,6 @@ access the Jupyter Notebook service in http://localhost:8888.
 
 When you format project's codes, please run `make format`.
 More details of black inhttps://github.com/psf/black
-
 
 # Credits
 
