@@ -31,8 +31,8 @@ ENV PATH=/usr/src/app/scripts:$PATH
 FROM base as dev 
 
 # Add development requirements and install
-COPY requirements_dev.txt ./
-RUN pip install --no-cache-dir -r requirements_dev.txt
+COPY requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Create interactive work path
 WORKDIR /work
