@@ -88,25 +88,46 @@ def compute_sliding_windows_for_data(df_features, **kws):
 def train_model(model, df_features, window):
     train_df, test_df = test_train_split(df_features, *window)
 
-    if getattr(model, "history", "") is None:
-        print("training model")
-        model.fit(train_df)
+    if isinstance(model, fbprophet.Prophet):
+        if getattr(model, "history", "") is None:
+            print(f"Fitting fbprophet with {len(train_df)} samples")
+            model.fit(train_df)
+
+    # elif isinstance(model, LinearGAM):
+    #     if not model._is_fitted:
+    #         print(f"Fitting LinearGAM with {len(train_df)}")
+    #         model.fit(train_df)
+    #     print("predictions from model")
+    #     train_predict = model.prediction_intervals(train_df)
+    #     test_predict = model.prediction_intervals(test_df)
+    else:
+        raise TypeError(f"Unknown model type {model.__class__.__name__}")
+
 
     print("predictions from model")
-    predict_test = model.predict(test_df)
+    train_predict = model.predict(train_df)
+    test_predict = model.predict(test_df)
+
+    required_predict_columns = {'yhat', 'yhat_lower', 'yhat_upper'}
+    columns = set(train_predict.columns)
+    missing_columns = required_predict_columns - columns
+    if len(missing_columns) > 0:
+        raise ValueError(f"Missing columns {missing_columns}")
+
 
     return {
         "model_name": model.model_name,
         "model": model,
+        "df_features": df_features,
         "train_df": train_df,
+        "train_predict": train_predict,
         "test_df": test_df,
-        "predict_train": model.predict(train_df),
-        "predict_test": predict_test,
+        "test_predict": test_predict,
         "window": window,
         "metrics": {
             "mean_absolute_error": sklearn.metrics.mean_absolute_error(
-                test_df["y"].values,
-                predict_test["yhat"].values,
+                test_df['y'].values,
+                test_predict['yhat'].values,
             ),
         },
     }
