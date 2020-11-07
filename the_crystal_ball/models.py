@@ -1,8 +1,10 @@
 """ Module for the models.
 """
 # standard
+from collections import OrderedDict
 import os
 import pickle
+import importlib
 
 # external
 import fbprophet
@@ -11,13 +13,17 @@ import fbprophet
 from .configuration import config
 
 
-def create_model(model_name, **hyperparameters):
-    if model_name == "fbprophet":
-        model = fbprophet.Prophet(**hyperparameters)
-        model.model_name = model_name
-        return model
-    else:
-        raise ValueError(f"Unknown model {model_name}")
+def create_model(model_name, model_class, hyperparameters=None):
+    parts = model_class.split('.')
+    module_path = '.'.join(parts[:-1])
+    class_name = parts[-1]
+    module = importlib.import_module(module_path)
+    ModelClass = getattr(module, class_name)
+
+    hyperparameters = hyperparameters or {}
+    model = ModelClass(**hyperparameters)
+    model.model_name = model_name
+    return model
 
 
 def save_model(model, filename):
