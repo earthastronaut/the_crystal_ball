@@ -4,8 +4,10 @@
 # external
 import pandas as pd
 import sklearn.metrics
+import fbprophet 
 
 # internal
+from the_crystal_ball.models import LinearGAM
 
 
 def test_train_split(df_features, train_range, test_range):
@@ -92,17 +94,12 @@ def train_model(model, df_features, window):
         if getattr(model, "history", "") is None:
             print(f"Fitting fbprophet with {len(train_df)} samples")
             model.fit(train_df)
-
-    # elif isinstance(model, LinearGAM):
-    #     if not model._is_fitted:
-    #         print(f"Fitting LinearGAM with {len(train_df)}")
-    #         model.fit(train_df)
-    #     print("predictions from model")
-    #     train_predict = model.prediction_intervals(train_df)
-    #     test_predict = model.prediction_intervals(test_df)
+    elif isinstance(model, LinearGAM):
+        if not model._is_fitted:
+            print(f"Fitting LinearGAM with {len(train_df)}")
+            model.fit(train_df)
     else:
         raise TypeError(f"Unknown model type {model.__class__.__name__}")
-
 
     print("predictions from model")
     train_predict = model.predict(train_df)
@@ -113,7 +110,6 @@ def train_model(model, df_features, window):
     missing_columns = required_predict_columns - columns
     if len(missing_columns) > 0:
         raise ValueError(f"Missing columns {missing_columns}")
-
 
     return {
         "model_name": model.model_name,
