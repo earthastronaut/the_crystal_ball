@@ -34,6 +34,10 @@ FROM base as dev
 COPY requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
+# For visualizing plotly in the notebook
+RUN jupyter labextension install jupyterlab-plotly@4.11.0
+
+
 # Create interactive work path
 WORKDIR /work
 

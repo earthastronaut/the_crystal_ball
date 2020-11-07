@@ -5,6 +5,8 @@ numpy
 # For data visualization
 matplotlib
 seaborn
+plotly
+kaleido
 
 # For download google trends data
 pytrends
