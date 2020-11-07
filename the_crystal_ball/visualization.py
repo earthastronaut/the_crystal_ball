@@ -3,6 +3,8 @@
 # external
 import matplotlib.pylab as plt
 import seaborn as sns
+import fbprophet
+import pandas as pd
 
 # internal
 from .training import test_train_split
@@ -49,7 +51,10 @@ def plot_articles(df_input, ax=None, colors=None, add_legend=True):
 def plot_features(df_features, ax=None, **kws):
     kws.setdefault("alpha", 0.5)
     ax = ax or plt.gca()
-    ax.plot(df_features["ds"], df_features["y"], **kws)
+    if isinstance(df_features, pd.Series):
+        ax.plot(df_features.index, df_features.values, **kws)
+    else:
+        ax.plot(df_features['ds'], df_features['y'], **kws)
 
 
 def plot_features_for_window(df_features, window, ax=None, **kws):
@@ -92,7 +97,7 @@ def figure_test_train_splits(df_features, windows, max_windows=5):
     return fig
 
 
-def plot_evaluation_fbprophet(predict_df, ax=None, **kws):
+def plot_evaluation_model_prediction(predict_df, ax=None, **kws):
     ax = ax or plt.gca()
     kws_plot = {
         "color": COLOR_PREDICT,
@@ -111,10 +116,9 @@ def plot_evaluation_fbprophet(predict_df, ax=None, **kws):
 
 def plot_evaluation_prediction(
     train_df,
+    train_predict,
     test_df,
-    predict_train,
-    predict_test,
-    window,
+    test_predict,
     model,
     ax=None,
     plot_kws=None,
@@ -123,8 +127,9 @@ def plot_evaluation_prediction(
     ax = ax or plt.gca()
     plot_kws = plot_kws or {}
 
-    plot_evaluation_fbprophet(predict_train, label="Predict", ax=ax, **plot_kws)  # noqa
-    plot_evaluation_fbprophet(predict_test, ax=ax, **plot_kws)
+    plot_evaluation_model_prediction(train_predict, label="Predict", ax=ax, **plot_kws)  # noqa
+    plot_evaluation_model_prediction(test_predict, ax=ax, **plot_kws)
+
     plot_features(
         train_df,
         color=COLOR_TRAIN,
@@ -165,10 +170,9 @@ def plot_evaluation_fbprophet_forecast_residual(
 
 def plot_evaluation_prediction_residual(
     train_df,
+    train_predict,
     test_df,
-    predict_train,
-    predict_test,
-    window,
+    test_predict,
     model,
     ax=None,
     plot_kws=None,
@@ -180,7 +184,7 @@ def plot_evaluation_prediction_residual(
 
     plot_evaluation_fbprophet_forecast_residual(
         train_df,
-        predict_train,
+        train_predict,
         label="Predict Train",
         color=COLOR_TRAIN,
         ax=ax,
@@ -188,7 +192,7 @@ def plot_evaluation_prediction_residual(
     )
     plot_evaluation_fbprophet_forecast_residual(
         test_df,
-        predict_test,
+        test_predict,
         label="Predict Test",
         color=COLOR_TEST,
         ax=ax,
@@ -198,3 +202,24 @@ def plot_evaluation_prediction_residual(
         plt.legend()
     ax.axhline(0, color="k")
     plt.ylabel("Residuals")
+
+
+def figure_evaluation_components(**training_results):
+    model = training_results['model']
+    model_name = training_results['model_name']
+    figure = model.plot_components(
+        training_results['test_predict'],
+        uncertainty=True,
+    )
+    ax = figure.axes[0]
+    ax.set_title(model_name)
+    # train_df = training_results['train_df']
+    test_df = training_results['test_df']
+    ax.plot(
+        test_df['ds'].values,
+        test_df['y'].values,
+    )
+
+    return figure
+
+ 
