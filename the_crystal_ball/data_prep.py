@@ -24,6 +24,7 @@ def create_features(df_input, **meta):
     #     Moving Average Smoothing
     df_features["y"] = df_filtered["views"].rolling(7).mean()
 
+    df_features["epoch"] = df_features['ds'].map(lambda t: t.timestamp())
     return df_features.dropna()
 
 
