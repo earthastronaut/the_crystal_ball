@@ -8,18 +8,15 @@ Timeseries forecast for SLC Python talk
 
 ## Setup development environment
 
-We setup the development environment in a Docker container with the following command.
+This uses docker-compose to handle the development setup. So to start run the 
+dev environment:
 
-- `make build`
+```
+docker-compose up dev
+```
 
-This command gets the resources for training and testing, and then prepares the Docker image for the experiments.
-After creating the Docker image, you run the following command.
-
-- `make docker-container`
-
-The above command creates a Docker container from the Docker image which we create with `make build`, and then
-login to the Docker container. Now we made the development environment. For create and evaluate the model,
-you run the following command.
+This will run a container with jupyter hosted at `http://localhost:8883` (you can 
+change the port within the docker-compose file).
 
 ## Development with Docker container
 
@@ -27,27 +24,20 @@ This section shows how we develop with the created Docker container.
 
 ### Edit source code
 
-Most of the source codes of this project, `the_crystal_ball` are stored in the `the_crystal_ball` directory.
-Generated Docker container mounts the project directory to `/work` of the container and therefore
-when you can edit the files in the host environment with your favorite editor
-such as Vim, Emacs, Atom or PyCharm. The changes in host environment are reflected in the Docker container environment.
+Source code is mounted within the container so any edits to the files will be 
+reflected within the running version of the container. 
 
 ### Update dependencies
 
-When we need to add libraries in `Dockerfile` or `requirements.txt`
-which are added to working environment in the Docker container, we need to drop the current Docker container and
-image, and then create them again with the latest setting. To remove the Docker the container and image, run `make clean-docker`
-and then `make docker-build` command to create the Docker container with the latest setting.
+To update libraries you will either need to edit `requirements.txt` or
+`requirements-dev.txt` and rebuild. `requirements-dev.txt` is for dependencies like
+jupyter that only need to be run during development. 
 
-### Login Docker container
+Once you add your dependency you will need to rebuild the image using docker-compose.
 
-Only the first time you need to create a Docker container, from the image created in `make build` command.
-`make docker-container` creates and launch the the_crystal_ball container.
-After creating the container, you just need run `make start-container`.
-
-### Logout from Docker container
-
-When you logout from shell in Docker container, please run `exit` in the console.
+```
+docker-compose build
+```
 
 ### Run linter
 
@@ -57,28 +47,3 @@ When you check the code quality, please run `make lint`
 
 When you run test in `tests` directory, please run `make test`
 
-### Sync data source to local data directory
-
-When you want to download data in remote data sources such as Amazon S3 or NFS, `sync-from-remote` target downloads them.
-
-### Sync local data to remote source
-
-When you modify the data in local environment, `sync-to-remote` target uploads the local files stored in `data` to specified data sources such as S3 or NFS directories.
-
-### Show profile of Docker container
-
-When you see the status of Docker container, please run `make profile` in host machine.
-
-### Use Jupyter Notebook
-
-To launch Jupyter Notebook, please run `make jupyter` in the Docker container. After launch the Jupyter Notebook, you can
-access the Jupyter Notebook service in http://localhost:8888.
-
-### Run formatter
-
-When you format project's codes, please run `make format`.
-More details of black inhttps://github.com/psf/black
-
-# Credits
-
-This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [cookiecutter-docker-science](https://docker-science.github.io/) project template.
