@@ -4,10 +4,9 @@
 # external
 import pandas as pd
 import sklearn.metrics
-import fbprophet 
-
-# internal
-from the_crystal_ball.models import LinearGAM
+import numpy as np
+import fbprophet
+from pygam.pygam import LinearGAM
 
 
 def test_train_split(df_features, train_range, test_range):
@@ -29,13 +28,72 @@ def test_train_split(df_features, train_range, test_range):
     train_mask = (timestamps >= train_start) & (timestamps < train_stop)
     test_mask = (timestamps >= test_start) & (timestamps < test_stop)
     if train_mask.sum() == 0:
-        raise ValueError("No training data")
+        xmin, xmax = timestamps.iloc[[0, -1]]
+        raise ValueError(
+            f"No training data: ({xmin}, {xmax}) "
+            f"doesnt match ({train_start}, {train_stop})"
+        )
     if test_mask.sum() == 0:
-        raise ValueError("No test data")
-    return (
-        df_features.loc[train_mask],
-        df_features.loc[test_mask],
-    )
+        xmin, xmax = timestamps.iloc[[0, -1]]
+        raise ValueError(
+            f"No test data: ({xmin}, {xmax}) "
+            f"doesnt match ({test_start}, {test_stop})"
+        )
+
+    (train_index,) = np.where(train_mask)
+    (test_index,) = np.where(test_mask)
+    return train_index, test_index
+
+
+class TimeSeriesSplit:
+    """ Takes the windows and returns sklearn capatible TimeSeriesSplit object """
+
+    def __init__(self, windows):
+        self.windows = windows
+
+    def split(self, df_features):
+        """ Split the features into train_index, test_index """
+        for window in self.windows:
+            yield test_train_split(df_features, *window)
+
+
+class LinearGAMScorer:
+    def __init__(
+        self,
+        objective=None,
+        metric=sklearn.metrics.median_absolute_error,
+        bigger_is_better=False,
+    ):
+        self.objective = objective
+        self.metric = metric
+        self.sign = 1 if bigger_is_better else -1
+
+    def _score_metric(self, estimator, test_df):
+        _, y_test = estimator.transform_train(test_df)
+        y_pred = estimator.prediction_intervals(test_df)
+        return self.sign * self.metric(y_test, y_pred["yhat"])
+
+    def _score_objective(self, estimator):
+        objective = self.objective
+        # check objective
+        if estimator.distribution._known_scale:
+            if objective == "GCV":
+                raise ValueError("GCV should be used for models with" "unknown scale")
+            if objective == "auto":
+                objective = "UBRE"
+
+        else:
+            if objective == "UBRE":
+                raise ValueError("UBRE should be used for models with " "known scale")
+            if objective == "auto":
+                objective = "GCV"
+        return self.sign * estimator.statistics_[objective]
+
+    def __call__(self, estimator, test_df, sample_weight=None):
+        if self.objective is None:
+            return self._score_metric(estimator, test_df)
+        else:
+            return self._score_objective(estimator)
 
 
 def compute_sliding_windows(
@@ -53,8 +111,9 @@ def compute_sliding_windows(
     interval_delta = pd.Timedelta(interval_delta)
 
     timestep = start
+    test_stop = start
     windows = []
-    while timestep < stop:
+    while test_stop < stop:
         train_start = timestep
         train_stop = train_start + interval_delta * training_size
         test_start = train_stop
@@ -71,6 +130,7 @@ def compute_sliding_windows(
 
 
 def compute_sliding_windows_for_data(df_features, **kws):
+    """Compute sliding windows based on start/stop of features """
     timestamps = df_features["ds"]
     interval_delta = timestamps[1] - timestamps[0]
     kws.setdefault("interval_delta", interval_delta)
@@ -88,7 +148,9 @@ def compute_sliding_windows_for_data(df_features, **kws):
 
 
 def train_model(model, df_features, window):
-    train_df, test_df = test_train_split(df_features, *window)
+    train_index, test_index = test_train_split(df_features, *window)
+    train_df = df_features.iloc[train_index]
+    test_df = df_features.iloc[test_index]
 
     if isinstance(model, fbprophet.Prophet):
         if getattr(model, "history", "") is None:
@@ -105,7 +167,7 @@ def train_model(model, df_features, window):
     train_predict = model.predict(train_df)
     test_predict = model.predict(test_df)
 
-    required_predict_columns = {'yhat', 'yhat_lower', 'yhat_upper'}
+    required_predict_columns = {"yhat", "yhat_lower", "yhat_upper"}
     columns = set(train_predict.columns)
     missing_columns = required_predict_columns - columns
     if len(missing_columns) > 0:
@@ -122,8 +184,8 @@ def train_model(model, df_features, window):
         "window": window,
         "metrics": {
             "mean_absolute_error": sklearn.metrics.mean_absolute_error(
-                test_df['y'].values,
-                test_predict['yhat'].values,
+                test_df["y"].values,
+                test_predict["yhat"].values,
             ),
         },
     }

@@ -5,9 +5,12 @@ import matplotlib.pylab as plt
 import seaborn as sns
 import fbprophet
 import pandas as pd
+import data_science_tools as tools
+import numpy as np
 
 # internal
 from .training import test_train_split
+from . import training
 
 # Default parameters for matplotlib
 plt.rcParams["figure.figsize"] = (11, 11)
@@ -54,14 +57,16 @@ def plot_features(df_features, ax=None, **kws):
     if isinstance(df_features, pd.Series):
         ax.plot(df_features.index, df_features.values, **kws)
     else:
-        ax.plot(df_features['ds'], df_features['y'], **kws)
+        ax.plot(df_features["ds"], df_features["y"], **kws)
 
 
 def plot_features_for_window(df_features, window, ax=None, **kws):
     ax = ax or plt.gca()
 
     train_range, test_range = window
-    train_df, test_df = test_train_split(df_features, train_range, test_range)
+    train_index, test_index = test_train_split(df_features, train_range, test_range)
+    train_df = df_features.iloc[train_index]
+    test_df = df_features.iloc[test_index]
 
     ax.set_title(train_range[0])
     plot_features(
@@ -127,7 +132,9 @@ def plot_evaluation_prediction(
     ax = ax or plt.gca()
     plot_kws = plot_kws or {}
 
-    plot_evaluation_model_prediction(train_predict, label="Predict", ax=ax, **plot_kws)  # noqa
+    plot_evaluation_model_prediction(
+        train_predict, label="Predict", ax=ax, **plot_kws
+    )  # noqa
     plot_evaluation_model_prediction(test_predict, ax=ax, **plot_kws)
 
     plot_features(
@@ -205,21 +212,102 @@ def plot_evaluation_prediction_residual(
 
 
 def figure_evaluation_components(**training_results):
-    model = training_results['model']
-    model_name = training_results['model_name']
+    model = training_results["model"]
+    model_name = training_results["model_name"]
     figure = model.plot_components(
-        training_results['test_predict'],
+        training_results["test_predict"],
         uncertainty=True,
     )
     ax = figure.axes[0]
     ax.set_title(model_name)
     # train_df = training_results['train_df']
-    test_df = training_results['test_df']
+    test_df = training_results["test_df"]
     ax.plot(
-        test_df['ds'].values,
-        test_df['y'].values,
+        test_df["ds"].values,
+        test_df["y"].values,
     )
 
     return figure
 
- 
+
+def plot_search_evaluate_histograms(results, ax=None):
+    scores = pd.DataFrame(
+        {
+            k: v
+            for k, v in results.cv_results_.items()
+            if k.endswith("test_score") and k.startswith("split")
+        }
+    ).T
+
+    if ax is None:
+        ax = tools.plotly.FigureSubplot()
+
+    bins = np.linspace(scores.values.min(), scores.values.max(), 15)
+    colors = tools.color_palette(len(scores), palette="Set2")
+
+    for param_index in scores:
+        values = scores[param_index]
+        cnt = tools.quantize_hist(values, bins)
+        pct = cnt.cumsum() / cnt.sum()
+        ax.add_scatter(
+            y=pct,
+            line=dict(color=next(colors)),
+            name=param_index,
+        )
+    return ax
+
+
+def plot_search_evaluate_results(results, ax=None):
+    scores = pd.DataFrame(
+        {
+            k: v
+            for k, v in results.cv_results_.items()
+            if k.endswith("test_score") and k.startswith("split")
+        }
+    ).T
+
+    if ax is None:
+        ax = tools.plotly.FigureSubplot()
+
+    colors = tools.color_palette(len(scores), palette="Set2")
+
+    for param_index in scores:
+        values = scores[param_index]
+        ax.add_scatter(
+            y=values,
+            line=dict(color=next(colors)),
+            name=param_index,
+        )
+    return ax
+
+
+def figure_search_evaluate_fitting(df_features, model, windows, max_windows=10):
+    max_windows = min(len(windows), max_windows)
+    fig, axes = plt.subplots(
+        nrows=max_windows,
+        ncols=1,
+        sharex=True,
+        figsize=(20, 30),
+    )
+    axes = axes.ravel()
+    for i in range(max_windows):
+        plt.sca(axes[i])
+        step_model = model.__class__(**model.get_params())
+        training_results = training.train_model(
+            step_model,
+            df_features,
+            window=windows[i],
+        )
+        evaluation_params = training.training_results_to_evaulation_params(
+            **training_results
+        )
+        train_df = training_results["train_df"]
+        plot_evaluation_prediction(
+            ax=axes[i],
+            add_legend=False,
+            **evaluation_params,
+        )
+        # axes[i].set_ylim(-1, 1)
+
+    fig.tight_layout()
+    return fig

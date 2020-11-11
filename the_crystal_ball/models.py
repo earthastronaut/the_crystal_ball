@@ -15,44 +15,73 @@ import pygam
 from .configuration import config
 
 
+def resolve_term_class(TermClass: str = "pygam.terms.SplineTerm"):
+    """Resolve the term class string into a class definition. """
+    module_name, _, class_name = TermClass.rpartition(".")
+    if module_name == "":
+        return getattr(pygam.terms, class_name)
+    else:
+        return getattr(importlib.import_module(module_name), class_name)
+
+
 class LinearGAM(pygam.LinearGAM):
     """Light wrapper around pygam.LinearGAM which is pandas aware."""
 
     @staticmethod
-    def _feature_hyperparameters_to_arg(feature_hyperparameters: OrderedDict):
+    def _feature_hyperparameters_to_terms(feature_hyperparameters: OrderedDict):
         """Convert the feature_hyperparameters to an arg for pygam.LinearGam"""
         if not isinstance(feature_hyperparameters, OrderedDict):
             raise TypeError(
                 f"feature hyperparameters should be OrderedDict with keys the columns "
                 f"and values the parameters. Not {type(feature_hyperparameters)}"
             )
-        arg = None
+        terms = pygam.terms.TermList()
         for i, feature_name in enumerate(feature_hyperparameters):
-            params = feature_hyperparameters[feature_name].copy()            
-            if params.get("fit_splines", True):
-                tmp = pygam.s(
-                    i,
-                    lam=params["lam"],
-                    spline_order=params["spline_order"],
-                    n_splines=params["n_splines"],
-                    dtype=params["dtype"],
+            params = feature_hyperparameters[feature_name].copy()
+            TermClass = resolve_term_class(params.pop("TermClass", "SplineTerm"))
+            try:
+                term = TermClass(
+                    feature=i,
+                    **params,
                 )
-            else:
-                tmp = pygam.l(
-                    i, lam=params["lam"]
-                )
-            arg = tmp if arg is None else arg + tmp
-        return arg
+            except Exception as error:
+                errmsg = f"Error when creating {TermClass.__name__} with {params}\n"
+                errmsg += str(error)
+                raise error.__class__(errmsg) from error
+
+            terms += term
+        return terms
 
     def __init__(
         self,
         feature_hyperparameters: OrderedDict,
         target_column: str,
+        model_name: str = None,
+        callbacks=["deviance", "diffs"],
+        **kws,
     ):
+        super().__init__(**kws)
+
+        # TODO: fixes a bug in LinearGAM where the callbacks are not passed through
+        self.callbacks = callbacks
+
+        self.model_name = model_name
         self.target_column = target_column
         self.feature_hyperparameters = feature_hyperparameters
-        arg = self._feature_hyperparameters_to_arg(feature_hyperparameters)
-        super().__init__(arg)
+        self.terms = self._feature_hyperparameters_to_terms(
+            self.feature_hyperparameters
+        )
+
+        # terms are created from the feature_hypterparameters and X
+        self._include += ["feature_hyperparameters", "target_column", "model_name"]
+        self._exclude += ["terms"]
+
+    def set_params(self, **params):
+        super().set_params(**params)
+        self.terms = self._feature_hyperparameters_to_terms(
+            self.feature_hyperparameters
+        )
+        return self
 
     def get_features(self):
         """Returns a list of features for this model"""
@@ -61,11 +90,11 @@ class LinearGAM(pygam.LinearGAM):
     def transform_train(self, X_features):
         """Returns X, y for training """
         X = self.transform(X_features)
-        X['_y'] = X_features.loc[X.index, self.target_column]
+        X["_y"] = X_features.loc[X.index, self.target_column]
         X = X.dropna()
-        y = X.pop('_y')
+        y = X.pop("_y")
         return X, y
-        
+
     def transform(self, X_features):
         """Returns a X matrix with only selected features"""
         features = list(self.get_features())
@@ -99,17 +128,15 @@ class LinearGAM(pygam.LinearGAM):
         predict = super().prediction_intervals(X, quantiles=quantiles)
 
         predict = pd.DataFrame(predict, columns=quantiles)
-        predict['ds'] = df_features['ds'].values
-        predict['yhat'] = predict[0.5]
-        predict['yhat_lower'] = predict[0.1]
-        predict['yhat_upper'] = predict[0.9]
+        predict["ds"] = df_features["ds"].values
+        predict["yhat"] = predict[0.5]
+        predict["yhat_lower"] = predict[0.1]
+        predict["yhat_upper"] = predict[0.9]
         return predict
 
 
 def create_model(model_name, model_class, hyperparameters=None):
-    parts = model_class.split('.')
-    module_path = '.'.join(parts[:-1])
-    class_name = parts[-1]
+    module_path, _, class_name = model_class.rpartition(".")
     module = importlib.import_module(module_path)
     ModelClass = getattr(module, class_name)
 
