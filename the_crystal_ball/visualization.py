@@ -7,6 +7,7 @@ import fbprophet
 import pandas as pd
 import data_science_tools as tools
 import numpy as np
+import pygam
 
 # internal
 from .training import test_train_split
@@ -213,24 +214,47 @@ def plot_evaluation_prediction_residual(
 
 def figure_evaluation_components(**training_results):
     model = training_results["model"]
-    model_name = training_results["model_name"]
-    figure = model.plot_components(
-        training_results["test_predict"],
-        uncertainty=True,
-    )
-    ax = figure.axes[0]
-    ax.set_title(model_name)
-    # train_df = training_results['train_df']
     test_df = training_results["test_df"]
-    ax.plot(
-        test_df["ds"].values,
-        test_df["y"].values,
-    )
 
+    if isinstance(model, fbprophet.Prophet):
+        model_name = training_results["model_name"]
+        figure = model.plot_components(
+            training_results["test_predict"],
+            uncertainty=True,
+        )
+        ax = figure.axes[0]
+        ax.set_title(model_name)
+        # train_df = training_results['train_df']
+        ax.plot(
+            test_df["ds"].values,
+            test_df["y"].values,
+        )
+
+    elif isinstance(model, pygam.pygam.LinearGAM):
+        X = model.transform(test_df)
+        predictions = model.predict_terms(X)
+        names = [repr(t) for t in model.terms]
+        for i, feature_name in enumerate(model.feature_hyperparameters.keys()):
+            names[i] += " " + feature_name
+
+        figure, axes = plt.subplots(nrows=len(names) + 1, ncols=1, sharex=True)
+        ax = axes[0]
+        ax.plot(
+            test_df["ds"],
+            predictions.sum(axis=0),
+        )
+        ax.set_title("Prediction")
+        for i, name in enumerate(names):
+            ax = axes[i + 1]
+            ax.plot(
+                test_df["ds"],
+                predictions[i],
+            )
+            ax.set_title(name)
     return figure
 
 
-def plot_search_evaluate_histograms(results, ax=None):
+def plot_search_evaluate_histograms(results, ax=None, add_legend=True):
     scores = pd.DataFrame(
         {
             k: v
@@ -240,7 +264,7 @@ def plot_search_evaluate_histograms(results, ax=None):
     ).T
 
     if ax is None:
-        ax = tools.plotly.FigureSubplot()
+        ax = plt.gca()
 
     bins = np.linspace(scores.values.min(), scores.values.max(), 15)
     colors = tools.color_palette(len(scores), palette="Set2")
@@ -249,15 +273,18 @@ def plot_search_evaluate_histograms(results, ax=None):
         values = scores[param_index]
         cnt = tools.quantize_hist(values, bins)
         pct = cnt.cumsum() / cnt.sum()
-        ax.add_scatter(
-            y=pct,
-            line=dict(color=next(colors)),
-            name=param_index,
+        ax.plot(
+            pct.index,
+            pct.values,
+            color=next(colors),
+            label=param_index,
         )
+    if add_legend:
+        plt.legend()
     return ax
 
 
-def plot_search_evaluate_results(results, ax=None):
+def plot_search_evaluate_results(results, ax=None, add_legend=True):
     scores = pd.DataFrame(
         {
             k: v
@@ -267,17 +294,19 @@ def plot_search_evaluate_results(results, ax=None):
     ).T
 
     if ax is None:
-        ax = tools.plotly.FigureSubplot()
+        ax = plt.gca()
 
     colors = tools.color_palette(len(scores), palette="Set2")
 
     for param_index in scores:
-        values = scores[param_index]
-        ax.add_scatter(
-            y=values,
-            line=dict(color=next(colors)),
-            name=param_index,
+        ax.plot(
+            scores.index,
+            scores[param_index].values,
+            color=next(colors),
+            label=param_index,
         )
+    if add_legend:
+        plt.legend()
     return ax
 
 
@@ -301,7 +330,6 @@ def figure_search_evaluate_fitting(df_features, model, windows, max_windows=10):
         evaluation_params = training.training_results_to_evaulation_params(
             **training_results
         )
-        train_df = training_results["train_df"]
         plot_evaluation_prediction(
             ax=axes[i],
             add_legend=False,

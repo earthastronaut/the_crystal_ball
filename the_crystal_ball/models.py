@@ -10,6 +10,7 @@ import importlib
 import fbprophet
 import pandas as pd
 import pygam
+import numpy as np
 
 # internal
 from .configuration import config
@@ -133,6 +134,20 @@ class LinearGAM(pygam.LinearGAM):
         predict["yhat_lower"] = predict[0.1]
         predict["yhat_upper"] = predict[0.9]
         return predict
+
+    def predict_terms(self, df_features):
+        """Return prediction per term """
+        X = self.transform(df_features)
+        modelmat = self._modelmat(X)
+        predictions = []
+        i = 0
+        for term in self.terms:
+            columns = slice(i, i + term.n_coefs)
+            y = modelmat[:, columns].dot(self.coef_[columns])
+            predictions.append(y)
+            i = columns.stop
+
+        return np.row_stack(predictions)
 
 
 def create_model(model_name, model_class, hyperparameters=None):

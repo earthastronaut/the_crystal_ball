@@ -17,14 +17,16 @@ def create_features(df_input, **meta):
     df_filtered = df_input.loc[df_input["article"] == input_article]
 
     df_features["ds"] = df_filtered["timestamp"]
+    df_features["day_of_week"] = df_features["ds"].dt.weekday
+    df_features["day_of_month"] = df_features["ds"].dt.day
+    df_features["y"] = df_filtered["views"].rolling(7).mean()
     # df_features["y"] = df_filtered["views"]
     #     Scaling
     #     Resampling and Interpolation
     #     Power Transforms to remove noise (e.g. square root or log transform)
     #     Moving Average Smoothing
-    df_features["y"] = df_filtered["views"].rolling(7).mean()
 
-    df_features["epoch"] = df_features['ds'].map(lambda t: t.timestamp())
+    df_features["epoch"] = df_features["ds"].map(lambda t: t.timestamp())
     return df_features.dropna()
 
 
