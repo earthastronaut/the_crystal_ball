@@ -60,40 +60,16 @@ class TimeSeriesSplit:
 class LinearGAMScorer:
     def __init__(
         self,
-        objective=None,
         metric=sklearn.metrics.median_absolute_error,
         bigger_is_better=False,
     ):
-        self.objective = objective
         self.metric = metric
         self.sign = 1 if bigger_is_better else -1
 
-    def _score_metric(self, estimator, test_df):
+    def __call__(self, estimator, test_df, sample_weight=None):
         _, y_test = estimator.transform_train(test_df)
         y_pred = estimator.prediction_intervals(test_df)
         return self.sign * self.metric(y_test, y_pred["yhat"])
-
-    def _score_objective(self, estimator):
-        objective = self.objective
-        # check objective
-        if estimator.distribution._known_scale:
-            if objective == "GCV":
-                raise ValueError("GCV should be used for models with" "unknown scale")
-            if objective == "auto":
-                objective = "UBRE"
-
-        else:
-            if objective == "UBRE":
-                raise ValueError("UBRE should be used for models with " "known scale")
-            if objective == "auto":
-                objective = "GCV"
-        return self.sign * estimator.statistics_[objective]
-
-    def __call__(self, estimator, test_df, sample_weight=None):
-        if self.objective is None:
-            return self._score_metric(estimator, test_df)
-        else:
-            return self._score_objective(estimator)
 
 
 def compute_sliding_windows(
