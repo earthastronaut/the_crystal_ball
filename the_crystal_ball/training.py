@@ -1,11 +1,16 @@
 """ Functions for training
 """
 # standard
+import copy
+import itertools
+import random
+
 # external
+import fbprophet
+import numpy as np
 import pandas as pd
 import sklearn.metrics
-import numpy as np
-import fbprophet
+import sklearn.model_selection
 from pygam.pygam import LinearGAM
 
 
@@ -57,7 +62,7 @@ class TimeSeriesSplit:
             yield test_train_split(df_features, *window)
 
 
-class LinearGAMScorer:
+class Scorer:
     def __init__(
         self,
         metric=sklearn.metrics.median_absolute_error,
@@ -67,9 +72,8 @@ class LinearGAMScorer:
         self.sign = 1 if bigger_is_better else -1
 
     def __call__(self, estimator, test_df, sample_weight=None):
-        _, y_test = estimator.transform_train(test_df)
-        y_pred = estimator.prediction_intervals(test_df)
-        return self.sign * self.metric(y_test, y_pred["yhat"])
+        y_pred = estimator.predict(test_df)
+        return self.sign * self.metric(test_df["y"], y_pred["yhat"])
 
 
 def compute_sliding_windows(
@@ -150,7 +154,6 @@ def train_model(model, df_features, window):
         raise ValueError(f"Missing columns {missing_columns}")
 
     return {
-        "model_name": model.model_name,
         "model": model,
         "df_features": df_features,
         "train_df": train_df,
@@ -170,3 +173,55 @@ def train_model(model, df_features, window):
 def training_results_to_evaulation_params(**training_results):
     evaluation_params = training_results.copy()
     return evaluation_params
+
+
+def generate_hyperparameter_grid_linear_gam(
+    base_hyperparameters, number_feature_parameters=30, feature_parameters=None
+):
+    """
+    options = {
+        'n_splines': np.linspace(1, 20, 10).astype(int),
+        'spline_order': np.arange(3, 10, 5).astype(int),
+        'lam': np.logspace(-3, 3, 11),
+    }
+    """
+    parameter_names = feature_parameters.keys()
+    parameter_options = list(itertools.product(*feature_parameters.values()))
+    grid = []
+
+    feature_hyperparameters = base_hyperparameters["feature_hyperparameters"]
+    number_feature_parameters = number_feature_parameters
+    for _ in range(number_feature_parameters):
+        feature_params = copy.deepcopy(feature_hyperparameters)
+        for feature_name, _ in feature_hyperparameters.items():
+            while True:
+                new_params = dict(
+                    zip(parameter_names, random.choice(parameter_options))
+                )
+                if new_params["n_splines"] > new_params["spline_order"]:
+                    # n_splines must be > spline_order
+                    continue
+
+            feature_params[feature_name].update(new_params)
+        grid.append(feature_params)
+
+    param_grid = {k: [v] for k, v in base_hyperparameters.items()}
+    param_grid["feature_hyperparameters"] = grid
+    return param_grid
+
+
+def hyperparamter_search(model, df_features, windows, **kws):
+    kws_search = {
+        "estimator": model,
+        "n_jobs": 10,
+        "cv": TimeSeriesSplit(windows).split(df_features),
+        "scoring": Scorer(),
+    }
+    if isinstance(model, LinearGAM):
+        param_grid = kws["param_grid"]
+        if "base_hyperparameters" in param_grid:
+            param_grid = generate_hyperparameter_grid_linear_gam(**param_grid)
+            kws["param_grid"] = param_grid
+    kws_search.update(kws)
+    model_search = sklearn.model_selection.GridSearchCV(**kws_search)
+    return model_search.fit(df_features)

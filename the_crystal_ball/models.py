@@ -1,16 +1,17 @@
 """ Module for the models.
 """
 # standard
-from collections import OrderedDict
+import functools
+import importlib
 import os
 import pickle
-import importlib
+from collections import OrderedDict
 
 # external
 import fbprophet
+import numpy as np
 import pandas as pd
 import pygam
-import numpy as np
 
 # internal
 from .configuration import config
@@ -148,6 +149,32 @@ class LinearGAM(pygam.LinearGAM):
             i = columns.stop
 
         return np.row_stack(predictions)
+
+
+class Prophet(fbprophet.Prophet):
+    def set_params(self, **params):
+        return self.__class__(**params)
+
+    def get_params(self, deep=False):
+        include = [
+            "growth",
+            # "changepoints",
+            "n_changepoints",
+            "changepoint_range",
+            "yearly_seasonality",
+            "weekly_seasonality",
+            "daily_seasonality",
+            "holidays",
+            "seasonality_mode",
+            "seasonality_prior_scale",
+            "holidays_prior_scale",
+            "changepoint_prior_scale",
+            "mcmc_samples",
+            "interval_width",
+            "uncertainty_samples",
+            # "stan_backend",
+        ]
+        return {k: getattr(self, k) for k in include}
 
 
 def create_model(model_name, model_class, hyperparameters=None):
