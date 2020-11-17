@@ -255,19 +255,23 @@ def figure_evaluation_components(**training_results):
 
 
 def plot_search_evaluate_histograms(results, ax=None, add_legend=True):
-    scores = pd.DataFrame(
-        {
-            k: v
-            for k, v in results.cv_results_.items()
-            if k.endswith("test_score") and k.startswith("split")
-        }
-    ).T
+    scores = (
+        pd.DataFrame(
+            {
+                k: v
+                for k, v in results.cv_results_.items()
+                if k.endswith("test_score") and k.startswith("split")
+            }
+        )
+        .dropna()
+        .T
+    )
 
     if ax is None:
         ax = plt.gca()
 
     bins = np.linspace(scores.values.min(), scores.values.max(), 15)
-    colors = tools.color_palette(len(scores), palette="Set2")
+    colors = tools.color_palette(len(scores.columns), palette="Set2")
 
     for param_index in scores:
         values = scores[param_index]
@@ -285,18 +289,22 @@ def plot_search_evaluate_histograms(results, ax=None, add_legend=True):
 
 
 def plot_search_evaluate_results(results, ax=None, add_legend=True):
-    scores = pd.DataFrame(
-        {
-            k: v
-            for k, v in results.cv_results_.items()
-            if k.endswith("test_score") and k.startswith("split")
-        }
-    ).T
+    scores = (
+        pd.DataFrame(
+            {
+                k: v
+                for k, v in results.cv_results_.items()
+                if k.endswith("test_score") and k.startswith("split")
+            }
+        )
+        .dropna()
+        .T
+    )
 
     if ax is None:
         ax = plt.gca()
 
-    colors = tools.color_palette(len(scores), palette="Set2")
+    colors = tools.color_palette(len(scores.columns), palette="Set2")
 
     for param_index in scores:
         ax.plot(
