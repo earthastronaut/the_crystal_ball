@@ -185,25 +185,21 @@ def generate_hyperparameter_grid_linear_gam(
         'lam': np.logspace(-3, 3, 11),
     }
     """
-    parameter_names = feature_parameters.keys()
-    parameter_options = list(itertools.product(*feature_parameters.values()))
     grid = []
-
     feature_hyperparameters = base_hyperparameters["feature_hyperparameters"]
-    number_feature_parameters = number_feature_parameters
     for _ in range(number_feature_parameters):
-        feature_params = copy.deepcopy(feature_hyperparameters)
-        for feature_name, _ in feature_hyperparameters.items():
+        feature_hyperparameters_new = copy.deepcopy(feature_hyperparameters)
+        for feature_name, params in feature_hyperparameters_new.items():
             while True:
-                new_params = dict(
-                    zip(parameter_names, random.choice(parameter_options))
-                )
-                if new_params["n_splines"] > new_params["spline_order"]:
+                for key, values in feature_parameters.items():
+                    params[key]
+                    params[key] = random.choice(values)
+                if params["n_splines"] <= params["spline_order"]:
                     # n_splines must be > spline_order
                     continue
-
-            feature_params[feature_name].update(new_params)
-        grid.append(feature_params)
+                break
+            feature_hyperparameters_new[feature_name] = params
+        grid.append(feature_hyperparameters_new)
 
     param_grid = {k: [v] for k, v in base_hyperparameters.items()}
     param_grid["feature_hyperparameters"] = grid
